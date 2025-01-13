@@ -5,6 +5,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_google_places_hoc081098/flutter_google_places_hoc081098.dart';
+import 'package:flutter_google_places_hoc081098/google_maps_webservice_places.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geocoding/geocoding.dart';
@@ -12,7 +13,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_api_headers/google_api_headers.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_webservice/places.dart';
 import 'package:laundry/Api/config.dart';
 import 'package:laundry/controller/selectlocation_controller.dart';
 import 'package:laundry/screen/onbording_screen.dart';
@@ -42,7 +42,8 @@ class _SelectDeliveryAddressState extends State<SelectDeliveryAddress> {
   String location = "Search for your delivery address".tr;
   Future<Position> locateUser() async {
     return Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
   }
 
   Future setvalueinZone() async {
@@ -195,8 +196,7 @@ class _SelectDeliveryAddressState extends State<SelectDeliveryAddress> {
                                       // given marker id
                                       markerId: const MarkerId("1"),
                                       // given marker icon
-                                      icon:
-                                          BitmapDescriptor.fromBytes(markIcons),
+                                      icon: BitmapDescriptor.bytes(markIcons),
                                       // given position
                                       position: LatLng(
                                         argument.latitude,
@@ -237,7 +237,7 @@ class _SelectDeliveryAddressState extends State<SelectDeliveryAddress> {
                                       backArrowIcon:
                                           const Icon(Icons.arrow_back),
                                       components: [
-                                        Component(Component.country, 'In')
+                                        const Component(Component.country, 'In')
                                       ],
                                       //google_map_webservice package
                                       onError: (err) {});

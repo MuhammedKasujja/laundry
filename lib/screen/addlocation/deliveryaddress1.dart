@@ -2,12 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_google_places_hoc081098/flutter_google_places_hoc081098.dart';
+import 'package:flutter_google_places_hoc081098/google_maps_webservice_places.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_api_headers/google_api_headers.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_webservice/places.dart';
 import 'package:laundry/Api/config.dart';
 import 'package:laundry/controller/addlocation_controller.dart';
 import 'package:laundry/model/fontfamily_model.dart';
@@ -31,7 +31,8 @@ class _DeliveryAddress1State extends State<DeliveryAddress1> {
 
   Future<Position> locateUser() async {
     return Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+      locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
+    );
   }
 
   @override
