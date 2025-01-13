@@ -11,7 +11,6 @@ import 'package:laundry/model/fontfamily_model.dart';
 import 'package:laundry/screen/home_screen.dart';
 import 'package:laundry/utils/Colors.dart';
 import 'package:laundry/utils/Custom_widget.dart';
-import 'dart:io' show Platform;
 
 import 'package:share_plus/share_plus.dart';
 

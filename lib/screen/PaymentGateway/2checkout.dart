@@ -19,26 +19,24 @@ class CheckOutPayment extends StatefulWidget {
 
 class _CheckOutPaymentState extends State<CheckOutPayment> {
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late WebViewController _controller;
+  late WebViewController _webViewController;
 
   var progress;
   String? accessToken;
   String? payerID;
   bool isLoading = true;
 
-  @override
-  Widget build(BuildContext context) {
-    if (_scaffoldKey.currentState == null) {
-      return Scaffold(
-        body: SafeArea(
-          child: Stack(
-            children: [
-              WebView(
-                initialUrl:
-                "${Config.paymentBaseUrl + "2checkout/index.php?amt=${widget.totalAmount}"}",
-                javascriptMode: JavascriptMode.unrestricted,
-                navigationDelegate: (NavigationRequest request) async {
-                  final uri = Uri.parse(request.url);
+   @override
+  initState() {
+    super.initState();
+    _webViewController = WebViewController()
+      ..loadRequest(Uri.parse(
+          "${Config.paymentBaseUrl + "2checkout/index.php?amt=${widget.totalAmount}"}"))
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) async {
+            final uri = Uri.parse(request.url);
 
                   print(" + + + + + + + + + + + + + ${uri.queryParameters}");
 
@@ -57,20 +55,29 @@ class _CheckOutPaymentState extends State<CheckOutPayment> {
                   }
 
                   return NavigationDecision.navigate;
-                },
-                gestureNavigationEnabled: true,
-                onWebViewCreated: (controller) {
-                  _controller = controller;
-                },
-                onPageFinished: (finish) {
-                  setState(() {
-                    isLoading = false;
-                  });
-                },
-                onProgress: (val) {
-                  progress = val;
-                  setState(() {});
-                },
+          },
+          onPageFinished: (finish) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+          onProgress: (val) {
+            progress = val;
+            setState(() {});
+          },
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_scaffoldKey.currentState == null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              WebViewWidget(
+                controller: _webViewController,
               ),
               isLoading
                   ? Center(

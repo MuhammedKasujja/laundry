@@ -25,7 +25,7 @@ class SearchInfo {
     required this.couponSubtitle,
   });
 
-  String storeId;
+  String? storeId;
   String storeLogo;
   String storeTitle;
   String storeCover;

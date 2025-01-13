@@ -1,7 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, prefer_const_constructors
-
 import 'package:flutter/material.dart';
-// import 'package:flutter_paypal/src/errors/network_error.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 import '../PaypalServices.dart';
@@ -23,7 +20,7 @@ class CompletePayment extends StatefulWidget {
   });
 
   @override
-  _CompletePaymentState createState() => _CompletePaymentState();
+  State<CompletePayment> createState() => _CompletePaymentState();
 }
 
 class _CompletePaymentState extends State<CompletePayment> {
@@ -54,7 +51,7 @@ class _CompletePaymentState extends State<CompletePayment> {
           loading = false;
           loadingError = false;
         });
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       } else {
         if (resp['exception'] != null && resp['exception'] == true) {
           widget.onError({"message": resp['message']});
@@ -64,7 +61,7 @@ class _CompletePaymentState extends State<CompletePayment> {
           });
         } else {
           await widget.onError(resp['data']);
-          Navigator.of(context).pop();
+          if (mounted) Navigator.of(context).pop();
         }
       }
       //return NavigationDecision.prevent;
@@ -84,8 +81,8 @@ class _CompletePaymentState extends State<CompletePayment> {
     return Scaffold(
       body: Container(
         child: loading
-            ? Column(
-                children: const [
+            ? const Column(
+                children: [
                   Expanded(
                     child: Center(
                       child: SpinKitFadingCube(
@@ -102,14 +99,17 @@ class _CompletePaymentState extends State<CompletePayment> {
                       Expanded(
                         child: Center(
                           child: NetworkError(
-                              loadData: complete,
-                              message: "Something went wrong,"),
+                            loadData: complete,
+                            message: "Something went wrong,",
+                          ),
                         ),
                       ),
                     ],
                   )
                 : const Center(
-                    child: Text("Payment Completed"),
+                    child: Text(
+                      "Payment Completed",
+                    ),
                   ),
       ),
     );

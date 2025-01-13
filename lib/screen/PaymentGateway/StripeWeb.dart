@@ -32,11 +32,26 @@ class _StripePaymentWebState extends State<StripePaymentWeb> {
     setState(() {});
 
     payCard = widget.paymentCard;
+
+    String initialUrl = Config.paymentBaseUrl +
+        'stripe/index.php?name=${payCard!.name}&email=${payCard!.email}&cardno=${payCard!.number}&cvc=${payCard!.cvv}&amt=${payCard!.amount}&mm=${payCard!.month}&yyyy=${payCard!.year}';
+
+    _controller = WebViewController()
+      ..loadRequest(Uri.parse(initialUrl))
+      ..setBackgroundColor(Colors.grey.shade200)
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: readJS,
+          onProgress: (val) {
+            setState(() {
+              progress = val;
+            });
+          },
+        ),
+      );
   }
 
-  String get initialUrl =>
-      Config.paymentBaseUrl +
-      'stripe/index.php?name=${payCard!.name}&email=${payCard!.email}&cardno=${payCard!.number}&cvc=${payCard!.cvv}&amt=${payCard!.amount}&mm=${payCard!.month}&yyyy=${payCard!.year}';
   @override
   Widget build(BuildContext context) {
     if (_scaffoldKey.currentState == null) {
@@ -80,24 +95,15 @@ class _StripePaymentWebState extends State<StripePaymentWeb> {
                     Container(
                       color: Colors.grey.shade200,
                       height: 25,
-                      child: WebView(
-                        backgroundColor: Colors.grey.shade200,
-                        initialUrl: initialUrl,
-                        javascriptMode: JavascriptMode.unrestricted,
-                        gestureNavigationEnabled: true,
-                        onWebViewCreated: (controller) =>
-                            _controller = controller,
-                        onPageFinished: (String url) {
-                          readJS();
-                        },
-                        onProgress: (val) {
-                          setState(() {});
-                          progress = val;
-                        },
+                      child: WebViewWidget(
+                        controller: _controller,
                       ),
                     ),
                     Container(
-                        height: 25, color: Colors.white, width: Get.width),
+                      height: 25,
+                      color: Colors.white,
+                      width: Get.width,
+                    ),
                   ],
                 )
               ],
@@ -123,37 +129,30 @@ class _StripePaymentWebState extends State<StripePaymentWeb> {
     }
   }
 
-  void readJS() async {
-    setState(() {
-      _controller
-          .evaluateJavascript("document.documentElement.innerText")
-          .then((value) async {
-        if (value.contains("Transaction_id")) {
-          String fixed = value.replaceAll(r"\'", "");
-          if (GetPlatform.isAndroid) {
-            String json = jsonDecode(fixed);
-            var val = jsonStringToMap(json);
-            if ((val['ResponseCode'] == "200") && (val['Result'] == "true")) {
-              Get.back(result: val["Transaction_id"]);
-              showToastMessage(val["ResponseMsg"]);
-            } else {
-              showToastMessage(val["ResponseMsg"]);
-              Get.back();
-            }
-          } else {
-            var val = jsonStringToMap(fixed);
-            if ((val['ResponseCode'] == "200") && (val['Result'] == "true")) {
-              Get.back(result: val["Transaction_id"]);
-              showToastMessage(val["ResponseMsg"]);
-            } else {
-              showToastMessage(val["ResponseMsg"]);
-              Get.back();
-            }
-          }
+  void readJS(String url) async {
+    if (url.contains("Transaction_id")) {
+      String fixed = url.replaceAll(r"\'", "");
+      if (GetPlatform.isAndroid) {
+        String json = jsonDecode(fixed);
+        var val = jsonStringToMap(json);
+        if ((val['ResponseCode'] == "200") && (val['Result'] == "true")) {
+          Get.back(result: val["Transaction_id"]);
+          showToastMessage(val["ResponseMsg"]);
+        } else {
+          showToastMessage(val["ResponseMsg"]);
+          Get.back();
         }
-        return "";
-      });
-    });
+      } else {
+        var val = jsonStringToMap(fixed);
+        if ((val['ResponseCode'] == "200") && (val['Result'] == "true")) {
+          Get.back(result: val["Transaction_id"]);
+          showToastMessage(val["ResponseMsg"]);
+        } else {
+          showToastMessage(val["ResponseMsg"]);
+          Get.back();
+        }
+      }
+    }
   }
 
   jsonStringToMap(String data) {

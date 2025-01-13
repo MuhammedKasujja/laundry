@@ -6,8 +6,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../Api/config.dart';
 
-
-
 class merpago extends StatefulWidget {
   final String? totalAmount;
 
@@ -19,87 +17,97 @@ class merpago extends StatefulWidget {
 
 class _merpagoState extends State<merpago> {
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late WebViewController _controller;
+  late WebViewController _webViewController;
   var progress;
   String? accessToken;
   String? payerID;
   bool isLoading = true;
 
   @override
+  initState() {
+    super.initState();
+    _webViewController = WebViewController()
+      ..loadRequest(Uri.parse(
+          "${Config.paymentBaseUrl + "/merpago/index.php?amt=${widget.totalAmount}"}"))
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) async {
+            final uri = Uri.parse(request.url);
+            if (uri.queryParameters["status"] == null) {
+              print(
+                  "${Config.paymentBaseUrl + "/merpago/index.php?amt=${widget.totalAmount}"}");
+              accessToken = uri.queryParameters["token"];
+            } else {
+              if (uri.queryParameters["status"] == "successful") {
+                payerID = await uri.queryParameters["transaction_id"];
+                Get.back(result: payerID);
+              } else {
+                Get.back();
+
+                Fluttertoast.showToast(
+                    msg: "${uri.queryParameters["status"]}",
+                    timeInSecForIosWeb: 4);
+              }
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageFinished: (finish) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+          onProgress: (val) {
+            setState(() {
+              progress = val;
+            });
+          },
+        ),
+      );
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (_scaffoldKey.currentState == null) {
-
-      return WillPopScope (
-
+      return WillPopScope(
         onWillPop: () {
           return Future(() => true);
         },
-
         child: Scaffold(
           body: SafeArea(
             child: Stack(
               children: [
-                WebView(
-                  initialUrl: "${Config.paymentBaseUrl + "/merpago/index.php?amt=${widget.totalAmount}"}",
-                  javascriptMode: JavascriptMode.unrestricted,
-                  navigationDelegate: (NavigationRequest request) async {
-                    final uri = Uri.parse(request.url);
-                    if (uri.queryParameters["status"] == null) {
-                      print("${Config.paymentBaseUrl + "/merpago/index.php?amt=${widget.totalAmount}"}");
-                      accessToken = uri.queryParameters["token"];
-                    } else {
-                      if (uri.queryParameters["status"] == "successful") {
-                        payerID = await uri.queryParameters["transaction_id"];
-                        Get.back(result: payerID);
-                      } else {
-
-                        Get.back();
-
-                        Fluttertoast.showToast(msg: "${uri.queryParameters["status"]}",timeInSecForIosWeb: 4);
-                      }
-                    }
-                    return NavigationDecision.navigate;
-                  },
-                  gestureNavigationEnabled: true,
-                  onWebViewCreated: (controller) {
-                    _controller = controller;
-                  },
-                  onPageFinished: (finish) {
-                    isLoading = false;
-                  },
-                  onProgress: (val) {
-                    progress = val;
-                    setState(() {});
-                  },
+                WebViewWidget(
+                  controller: _webViewController,
                 ),
                 isLoading
                     ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        child: CircularProgressIndicator(),
-                      ),
-                      SizedBox(height: Get.height * 0.02),
-                      SizedBox(
-                        width: Get.width * 0.80,
-                        child: Text(
-                          'Please don`t press back until the transaction is complete'
-                              .tr,
-                          maxLines: 2,
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              child: CircularProgressIndicator(),
+                            ),
+                            SizedBox(height: Get.height * 0.02),
+                            SizedBox(
+                              width: Get.width * 0.80,
+                              child: Text(
+                                'Please don`t press back until the transaction is complete'
+                                    .tr,
+                                maxLines: 2,
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 0.5),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                )
+                      )
                     : Stack(),
               ],
             ),

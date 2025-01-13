@@ -20,12 +20,50 @@ class Flutterwave extends StatefulWidget {
 
 class _FlutterwaveState extends State<Flutterwave> {
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late WebViewController _controller;
+  late WebViewController _webViewController;
   var progress;
   String? accessToken;
   String? payerID;
   bool isLoading = true;
   CartController cartController = Get.find();
+
+  @override
+  initState() {
+    super.initState();
+    _webViewController = WebViewController()
+      ..loadRequest(Uri.parse(
+          "${Config.paymentBaseUrl + "flutterwave/index.php?amt=${widget.totalAmount}&email=${widget.email}"}"))
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) async {
+            final uri = Uri.parse(request.url);
+            if (uri.queryParameters["status"] == null) {
+              accessToken = uri.queryParameters["token"];
+            } else {
+              if (uri.queryParameters["status"] == "successful") {
+                payerID = await uri.queryParameters["transaction_id"];
+                Get.back(result: payerID);
+              } else {
+                cartController.setOrderLoadingOff();
+                Get.back();
+                showToastMessage("${uri.queryParameters["status"]}");
+              }
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageFinished: (finish) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+          onProgress: (val) {
+            progress = val;
+            setState(() {});
+          },
+        ),
+      );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,39 +77,8 @@ class _FlutterwaveState extends State<Flutterwave> {
           body: SafeArea(
             child: Stack(
               children: [
-                WebView(
-                  initialUrl:
-                      "${Config.paymentBaseUrl + "flutterwave/index.php?amt=${widget.totalAmount}&email=${widget.email}"}",
-                  javascriptMode: JavascriptMode.unrestricted,
-                  navigationDelegate: (NavigationRequest request) async {
-                    final uri = Uri.parse(request.url);
-                    if (uri.queryParameters["status"] == null) {
-                      accessToken = uri.queryParameters["token"];
-                    } else {
-                      if (uri.queryParameters["status"] == "successful") {
-                        payerID = await uri.queryParameters["transaction_id"];
-                        Get.back(result: payerID);
-                      } else {
-                        cartController.setOrderLoadingOff();
-                        Get.back();
-                        showToastMessage("${uri.queryParameters["status"]}");
-                      }
-                    }
-                    return NavigationDecision.navigate;
-                  },
-                  gestureNavigationEnabled: true,
-                  onWebViewCreated: (controller) {
-                    _controller = controller;
-                  },
-                  onPageFinished: (finish) {
-                    setState(() async {
-                      isLoading = false;
-                    });
-                  },
-                  onProgress: (val) {
-                    progress = val;
-                    setState(() {});
-                  },
+                WebViewWidget(
+                  controller: _webViewController,
                 ),
                 isLoading
                     ? Center(
@@ -94,10 +101,11 @@ class _FlutterwaveState extends State<Flutterwave> {
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: 0.5),
+                                  color: Colors.black,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
                           ],

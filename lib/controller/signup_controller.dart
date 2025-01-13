@@ -9,7 +9,6 @@ import 'package:laundry/Api/config.dart';
 import 'package:laundry/Api/data_store.dart';
 import 'package:laundry/helpar/routes_helper.dart';
 import 'package:laundry/model/pagelist_info.dart';
-import 'package:laundry/screen/loginAndsignup/resetpassword_screen.dart';
 import 'package:laundry/utils/Custom_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -2,9 +2,7 @@
 
 library flutter_paypal;
 
-import 'dart:async';
 import 'dart:core';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:laundry/screen/paypal/src/screens/complete_payment.dart';
@@ -39,8 +37,6 @@ class UsePaypal extends StatefulWidget {
 }
 
 class UsePaypalState extends State<UsePaypal> {
-  final Completer<WebViewController> _controller =
-      Completer<WebViewController>();
   String checkoutUrl = '';
   String navUrl = '';
   String executeUrl = '';
@@ -50,6 +46,7 @@ class UsePaypalState extends State<UsePaypal> {
   bool loadingError = false;
   late PaypalServices services;
   int pressed = 0;
+  late WebViewController _webViewController;
 
   Map getOrderParams() {
     Map<String, dynamic> temp = {
@@ -85,6 +82,7 @@ class UsePaypalState extends State<UsePaypal> {
             pageloading = false;
             loadingError = false;
           });
+          _webViewController.loadRequest(Uri.parse(checkoutUrl));
         } else {
           widget.onError(res);
           setState(() {
@@ -112,14 +110,6 @@ class UsePaypalState extends State<UsePaypal> {
     }
   }
 
-  JavascriptChannel _toasterJavascriptChannel(BuildContext context) {
-    return JavascriptChannel(
-        name: 'Toaster',
-        onMessageReceived: (JavascriptMessage message) {
-          widget.onError(message.message);
-        });
-  }
-
   @override
   void initState() {
     super.initState();
@@ -128,13 +118,67 @@ class UsePaypalState extends State<UsePaypal> {
       clientId: widget.clientId,
       secretKey: widget.secretKey,
     );
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) async {
+            if (request.url.startsWith('https://www.youtube.com/')) {
+              return NavigationDecision.prevent;
+            }
+            if (request.url.contains(widget.returnURL)) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompletePayment(
+                    url: request.url,
+                    services: services,
+                    executeUrl: executeUrl,
+                    accessToken: accessToken,
+                    onSuccess: widget.onSuccess,
+                    onCancel: widget.onCancel,
+                    onError: widget.onError,
+                  ),
+                ),
+              );
+            }
+            if (request.url.contains(widget.cancelURL)) {
+              final uri = Uri.parse(request.url);
+              await widget.onCancel(uri.queryParameters);
+              Navigator.of(context).pop();
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageStarted: (String url) {
+            setState(() {
+              pageloading = true;
+              loadingError = false;
+            });
+          },
+          onPageFinished: (String url) {
+            setState(() {
+              navUrl = url;
+              pageloading = false;
+            });
+          },
+        ),
+      );
+
+    _webViewController.addJavaScriptChannel('Toaster',
+        onMessageReceived: (message) {
+      widget.onError(message.message);
+    });
+
     setState(() {
       navUrl = widget.sandboxMode
           ? 'https://api.sandbox.paypal.com'
           : 'https://www.api.paypal.com';
+
+      _webViewController.loadRequest(Uri.parse(navUrl));
     });
-    // Enable hybrid composition.
-    if (Platform.isAndroid) WebView.platform = SurfaceAndroidWebView();
+
+    // // Enable hybrid composition.
+    // if (Platform.isAndroid) WebView.platform = SurfaceAndroidWebView();
     loadPayment();
   }
 
@@ -156,16 +200,16 @@ class UsePaypalState extends State<UsePaypal> {
         }
       },
       child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF272727),
-            leading: GestureDetector(
-              child: const Icon(Icons.arrow_back_ios),
-              onTap: () => Navigator.pop(context),
-            ),
-            title: Row(
-              children: [
-                Expanded(
-                    child: Container(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF272727),
+          leading: GestureDetector(
+            child: const Icon(Icons.arrow_back_ios),
+            onTap: () => Navigator.pop(context),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
@@ -197,97 +241,51 @@ class UsePaypalState extends State<UsePaypal> {
                           : const SizedBox()
                     ],
                   ),
-                ))
-              ],
-            ),
-            elevation: 0,
+                ),
+              )
+            ],
           ),
-          body: SizedBox(
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width,
-            child: loading
-                ? Column(
-                    children: const [
-                      Expanded(
-                        child: Center(
-                          child: SpinKitFadingCube(
-                            color: Color(0xFFEB920D),
-                            size: 30.0,
-                          ),
+          elevation: 0,
+        ),
+        body: SizedBox(
+          height: MediaQuery.of(context).size.height,
+          width: MediaQuery.of(context).size.width,
+          child: loading
+              ? Column(
+                  children: const [
+                    Expanded(
+                      child: Center(
+                        child: SpinKitFadingCube(
+                          color: Color(0xFFEB920D),
+                          size: 30.0,
                         ),
                       ),
-                    ],
-                  )
-                : loadingError
-                    ? Column(
-                        children: [
-                          Expanded(
-                            child: Center(
-                              child: NetworkError(
-                                  loadData: loadPayment,
-                                  message: "Something went wrong,"),
-                            ),
+                    ),
+                  ],
+                )
+              : loadingError
+                  ? Column(
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: NetworkError(
+                                loadData: loadPayment,
+                                message: "Something went wrong,"),
                           ),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          Expanded(
-                            child: WebView(
-                              initialUrl: checkoutUrl,
-                              javascriptMode: JavascriptMode.unrestricted,
-                              gestureNavigationEnabled: true,
-                              onWebViewCreated:
-                                  (WebViewController webViewController) {
-                                _controller.complete(webViewController);
-                              },
-                              javascriptChannels: <JavascriptChannel>[
-                                _toasterJavascriptChannel(context),
-                              ].toSet(),
-                              navigationDelegate:
-                                  (NavigationRequest request) async {
-                                if (request.url
-                                    .startsWith('https://www.youtube.com/')) {
-                                  return NavigationDecision.prevent;
-                                }
-                                if (request.url.contains(widget.returnURL)) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => CompletePayment(
-                                            url: request.url,
-                                            services: services,
-                                            executeUrl: executeUrl,
-                                            accessToken: accessToken,
-                                            onSuccess: widget.onSuccess,
-                                            onCancel: widget.onCancel,
-                                            onError: widget.onError)),
-                                  );
-                                }
-                                if (request.url.contains(widget.cancelURL)) {
-                                  final uri = Uri.parse(request.url);
-                                  await widget.onCancel(uri.queryParameters);
-                                  Navigator.of(context).pop();
-                                }
-                                return NavigationDecision.navigate;
-                              },
-                              onPageStarted: (String url) {
-                                setState(() {
-                                  pageloading = true;
-                                  loadingError = false;
-                                });
-                              },
-                              onPageFinished: (String url) {
-                                setState(() {
-                                  navUrl = url;
-                                  pageloading = false;
-                                });
-                              },
-                            ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: WebViewWidget(
+                            controller: _webViewController,
                           ),
-                        ],
-                      ),
-          )),
+                        ),
+                      ],
+                    ),
+        ),
+      ),
     );
   }
 }

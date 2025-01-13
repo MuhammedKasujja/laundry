@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:laundry/Api/config.dart';
-import 'package:laundry/model/home_info.dart';
 import 'package:laundry/screen/home_screen.dart';
 import 'package:laundry/screen/yourcart_screen.dart';
 import 'package:lottie/lottie.dart';

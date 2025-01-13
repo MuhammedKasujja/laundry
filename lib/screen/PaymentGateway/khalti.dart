@@ -6,7 +6,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../Api/config.dart';
 import '../../utils/Custom_widget.dart';
 
-
 class Khalti extends StatefulWidget {
   final String? email;
   final String? totalAmount;
@@ -19,11 +18,48 @@ class Khalti extends StatefulWidget {
 
 class _KhaltiState extends State<Khalti> {
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late WebViewController _controller;
+  late WebViewController _webViewController;
   var progress;
   String? accessToken;
   String? payerID;
   bool isLoading = true;
+
+  @override
+  initState() {
+    super.initState();
+    _webViewController = WebViewController()
+      ..loadRequest(Uri.parse(
+          "${Config.paymentBaseUrl + "/Khalti/index.php?amt=${widget.totalAmount}"}"))
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) async {
+            final uri = Uri.parse(request.url);
+            if (uri.queryParameters["Result"] == null) {
+              accessToken = uri.queryParameters["Transaction_id"];
+            } else {
+              if (uri.queryParameters["Result"] == "true") {
+                payerID = await uri.queryParameters["Transaction_id"];
+                Get.back(result: payerID);
+              } else {
+                Get.back();
+                showToastMessage("${uri.queryParameters["ResponseMsg"]}");
+              }
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageFinished: (finish) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+          onProgress: (val) {
+            progress = val;
+            setState(() {});
+          },
+        ),
+      );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,70 +68,38 @@ class _KhaltiState extends State<Khalti> {
         body: SafeArea(
           child: Stack(
             children: [
-              WebView(
-                initialUrl: "${Config.paymentBaseUrl +"/Khalti/index.php?amt=${widget.totalAmount}"}",
-                javascriptMode: JavascriptMode.unrestricted,
-                navigationDelegate: (NavigationRequest request) async {
-                  final uri = Uri.parse(request.url);
-                  if (uri.queryParameters["Result"] == null) {
-                    accessToken = uri.queryParameters["Transaction_id"];
-                  } else {
-                    if (uri.queryParameters["Result"] == "true") {
-                      payerID = await uri.queryParameters["Transaction_id"];
-                      Get.back(result: payerID);
-                    } else {
-                      Get.back();
-                      showToastMessage("${uri.queryParameters["ResponseMsg"]}");
-                    }
-                  }
-                  return NavigationDecision.navigate;
-                },
-
-                gestureNavigationEnabled: true,
-
-                onWebViewCreated: (controller) {
-                  _controller = controller;
-                },
-
-                onPageFinished: (finish) {
-                  setState(()  {
-                    isLoading = false;
-                  });
-                },
-
-                onProgress: (val) {
-                  progress = val;
-                  setState(() {});
-                },
+              WebViewWidget(
+                controller: _webViewController,
               ),
               isLoading
                   ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      child: CircularProgressIndicator(),
-                    ),
-                    SizedBox(height: Get.height * 0.02),
-                    SizedBox(
-                      width: Get.width * 0.80,
-                      child: Text(
-                        'Please don`t press back until the transaction is complete'
-                            .tr,
-                        maxLines: 2,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            child: CircularProgressIndicator(),
+                          ),
+                          SizedBox(height: Get.height * 0.02),
+                          SizedBox(
+                            width: Get.width * 0.80,
+                            child: Text(
+                              'Please don`t press back until the transaction is complete'
+                                  .tr,
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              )
+                    )
                   : Stack(),
             ],
           ),
